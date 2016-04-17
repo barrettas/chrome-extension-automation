@@ -11,7 +11,8 @@ function init() {
 		$(this).next(".toggle").slideToggle("medium");
 	});
 
-	form = document.getElementById("prefs-form");
+	var form = document.getElementById("prefs-form");
+	debugger;
 	chrome.management.getAll(load_extensions);
 	form.addEventListener("submit", function (event) {
 		var selectedExt = document.getElementById("dropdown_ext_list").value;
@@ -32,8 +33,7 @@ function firstRun(){
 	}
 }
 
-function popupInit() {
-	popupForm = document.getElementById("popup-form");
+function popupInit(popupForm) {
 	chrome.tabs.getSelected(function (tab) {
 		var getUrl = tab.url;
 		var domainUrl = getUrl.split('/');
@@ -51,11 +51,15 @@ function popupInit() {
 	});
 }
 
+function isExtensionType(ext) {
+	return ext.type === "extension";
+}
+
 function load_extensions(extensions) {
 	var x = document.getElementById("dropdown_ext_list");
 	var optionArray = [];
-	for (i in extensions) {
-		if (extensions[i].isApp != 1 && (extensions[i].name != 'Extension Automation')) {
+	for (var i in extensions) {
+		if (isExtensionType(extensions[i]) && (extensions[i].name != 'Extension Automation')) {
 			optionArray[i] = [extensions[i].name, extensions[i].id];
 		}
 	}
@@ -70,7 +74,7 @@ function load_extensions(extensions) {
 }
 function addStore(extId, filterText, bEnable) {	
 	chrome.management.get(extId, function (ext) {
-		if (ext.isApp){
+		if (!isExtensionType(ext)){
 			return;
 		}
 		var storedEntry = JSON.parse(localStorage.getItem(ext.id));
@@ -220,3 +224,14 @@ function doClear() {
 		makeTable();
 	  }	
 }
+
+var optsLink = document.querySelector("#goto1");
+optsLink && (optsLink.onclick = function openOptions() {
+  window.open('options.html');
+});
+
+(function(){
+  var popupForm = document.querySelector("#popup-form");
+  popupForm && popupInit(popupForm);
+  popupForm == null && init();
+})();

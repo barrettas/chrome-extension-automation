@@ -1,16 +1,7 @@
-<!doctype html>
-<html>
-<head>
-<title>Extension Automation Background Page</title>
-</head>
-
-<body>
-<script>
-
 function resetStates() {
 	
-	for (key in localStorage) {
-		if (key == "undefined" || typeof (key) == undefined|| key == "firstRun") {
+	for (var key in localStorage) {
+		if (key == "undefined" || key === undefined|| key == "firstRun") {
 			continue;
 		}
 		var storedEntry = JSON.parse(localStorage.getItem(key));
@@ -20,8 +11,8 @@ function resetStates() {
 }
 
 function checkForValidUrl(tab) {
-	for (key in localStorage) {
-		if (key == "undefined" || typeof (key) == undefined|| key == "firstRun") {
+	for (var key in localStorage) {
+		if (key == "undefined" || key === undefined|| key == "firstRun" || !tab.active) {
 			continue;
 		}
 		var storedEntry = JSON.parse(localStorage.getItem(key));
@@ -47,11 +38,10 @@ function setExt() {
 	chrome.browserAction.setBadgeText({
 		text: ""
 	});
-	for (key in localStorage) {
-		if (key == "undefined" || typeof (key) == undefined || key == "firstRun") {
+	for (var key in localStorage) {
+		if (key == "undefined" || key === undefined || key == "firstRun") {
 			continue;
 		}
-		var storedEntry = JSON.parse(localStorage.getItem(key));
 		chrome.management.get(key, function (ext) {
 			var storedEntry = JSON.parse(localStorage.getItem(ext.id));
 			if (storedEntry.bEnable == true) {
@@ -84,52 +74,34 @@ function setExt() {
 		});
 	}
 }
-chrome.tabs.onUpdated.addListener(function (tabId, changeInfo, tab) {
-    if (changeInfo.status == 'loading') {
-        //Execute script when the page is fully (DOM) ready, otherwise EVENT FIRES TWICE!
-	resetStates();
-	chrome.windows.getAll({
-		"populate": true
-	}, function (window) {
-		for (w in window) {
-			for (t in window[w].tabs) {
-				checkForValidUrl(window[w].tabs[t]);
-			}
-		}
-	setExt();
-	});
-    }
+
+function doTabChange(tabId, changeInfo, tab) {
+	if (changeInfo.status == 'loading') {
+		//Execute script when the page is fully (DOM) ready, otherwise EVENT FIRES TWICE!
+		resetStates();
+		checkForValidUrl(tab);
+		setExt();
+	}
+}
+
+chrome.tabs.onUpdated.addListener(doTabChange);
+chrome.tabs.onActivated.addListener(function(ctx){
+	chrome.tabs.get(ctx.tabId, function(tab) {
+		doTabChange(ctx.tabId, {status: 'loading'}, tab);
+	})
 });
 chrome.tabs.onRemoved.addListener(function (tabId, removeInfo) {
 	resetStates();
-	chrome.windows.getAll({
-		"populate": true
-	}, function (window) {
-		for (w in window) {
-			for (t in window[w].tabs) {
-				checkForValidUrl(window[w].tabs[t]);
-			}
-		}
 	setExt();
-	});
 });
 //on init get all
 chrome.browserAction.setBadgeText({
 	text: ""
 });
 
-chrome.windows.getAll({
-	"populate": true
-}, function (window) {
-	resetStates();
-	for (w in window) {
-		for (t in window[w].tabs) {
-			checkForValidUrl(window[w].tabs[t]);
-		}
-	}
-	setExt();
+resetStates();
+chrome.tabs.getCurrent(function(tab){
+	tab && checkForValidUrl(tab);
 });
-</script>
-</body>
-</html>
+setExt();
 
