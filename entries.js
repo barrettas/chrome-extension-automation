@@ -1,4 +1,4 @@
-//Copyright © Russell Hoy 2012 All Right Reserved. 
+//Copyright © Russell Hoy 2012 All Right Reserved.
 //No parts of this document may be used in any published or commercial
 //materials without prior consent. I would happy to share this code, but I prefer being asked first.
 
@@ -18,7 +18,7 @@ function init() {
 		var selectedExt = document.getElementById("dropdown_ext_list").value;
 		var filterWords = document.getElementById("txtEnter").value;
 		var bEnable = document.getElementById("bEnable").value;
-		addStore(selectedExt, filterWords, bEnable);		
+		addStore(selectedExt, filterWords, bEnable);
 	});
 	makeTable();
 
@@ -72,7 +72,7 @@ function load_extensions(extensions) {
 		x.options[p] = op;
 	}
 }
-function addStore(extId, filterText, bEnable) {	
+function addStore(extId, filterText, bEnable) {
 	chrome.management.get(extId, function (ext) {
 		if (!isExtensionType(ext)){
 			return;
@@ -110,8 +110,8 @@ function makeTable() {
 		table.innerHTML = '<tr><th>Extension</th> <th>Filter</th></tr>';
 	}
 	var $tbody = document.createElement("tbody");
-	for (extId in localStorage) {
-		if (extId == "undefined" || extId == "firstRun") {continue;}
+	Object.keys(localStorage).forEach(extId => {
+		if (extId == "undefined" || extId == "firstRun") {return;}
 		chrome.management.get(extId, function (ext) {
 			var entry = JSON.parse(localStorage.getItem(ext.id));
 			if (entry == null){return;}
@@ -120,12 +120,12 @@ function makeTable() {
 			var $td = document.createElement("td");
 			var extensionName = document.createElement('a');
 			document.createTextNode(entry.name);
-			
+
 			//add icons if possible
 			try {
-				if (ext.icons[1]) { 
+				if (ext.icons[1]) {
 					extensionName.innerHTML = "<img src=" + ext.icons[1].url + " width = 30 height = 30 />  "
-				} 
+				}
 				else if(ext.icons[0]) {
 					extensionName.innerHTML = "<img src=" + ext.icons[0].url + " width = 30 height = 30 />  "
 				}
@@ -160,7 +160,7 @@ function makeTable() {
 			$tbody.appendChild($tr)
 			table.appendChild($tbody)
 		});
-	}
+	});
 	getStored();
 }
 
@@ -182,7 +182,7 @@ function setStored(){
 	        		$('#flash').fadeOut(2000);
 	      	});
 	}
-	catch(err){ 
+	catch(err){
 		alert("Sorry, there was a problem importing data. Most likely, the imported data has a formatting mistake. Details: " + err);
 	}
 }
@@ -222,7 +222,7 @@ function doClear() {
 	  	localStorage.clear();
 	  	firstRun();
 		makeTable();
-	  }	
+	  }
 }
 
 var optsLink = document.querySelector("#goto1");
