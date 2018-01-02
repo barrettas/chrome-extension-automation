@@ -153,7 +153,10 @@ function makeTable() {
 				enable_words.innerHTML = entry.filterWords[i] + "," + "<br>";
 				enable_words.setAttribute('class', entry.id);
 				enable_words.setAttribute('id', i);
-				enable_words.setAttribute('onclick', 'removeItem(this.className, this.id)');
+				// enable_words.setAttribute('onclick', 'removeItem(this.className, this.id)');
+				enable_words.addEventListener('click', (evt) => {
+					removeItem(evt.target.className, evt.target.id);
+				});
 				$td.appendChild(enable_words);
 			}
 			$tr.appendChild($td);
@@ -162,10 +165,18 @@ function makeTable() {
 		});
 	});
 	getStored();
+	setupEvents();
 }
 
 function getStored(){
 	$('#export').val(JSON.stringify(localStorage));
+}
+
+function setupEvents(){
+	document.querySelector("#export").addEventListener('focus', () => selectAll("export"));
+	document.querySelector("#importBut").addEventListener('click', () => setStored());
+	document.querySelector("#clearBut").addEventListener('click', () => doClear());
+	document.querySelector("#manageExtsLink").addEventListener('click', () => chrome.tabs.create({url: "chrome://settings/extensions"}));
 }
 
 function setStored(){

@@ -1,19 +1,19 @@
 function resetStates() {
-	
-	for (var key in localStorage) {
+
+	Object.keys(localStorage).forEach(key => {
 		if (key == "undefined" || key === undefined|| key == "firstRun") {
-			continue;
+			return;
 		}
 		var storedEntry = JSON.parse(localStorage.getItem(key));
 		storedEntry.bActivated = false;
 		localStorage.setItem(key, JSON.stringify(storedEntry))
-	}
+	});
 }
 
 function checkForValidUrl(tab) {
-	for (var key in localStorage) {
+	Object.keys(localStorage).forEach(key => {
 		if (key == "undefined" || key === undefined|| key == "firstRun" || !tab.active) {
-			continue;
+			return;
 		}
 		var storedEntry = JSON.parse(localStorage.getItem(key));
 		if (storedEntry.bActivated == false) {
@@ -23,11 +23,11 @@ function checkForValidUrl(tab) {
 					//console.log(tab.url,storedEntry.name)
 					storedEntry.bActivated = true;
 					localStorage.setItem(key, JSON.stringify(storedEntry))
-					
+
 				}
 			}
 		}
-	}
+	});
 }
 
 function setExt() {
@@ -38,9 +38,9 @@ function setExt() {
 	chrome.browserAction.setBadgeText({
 		text: ""
 	});
-	for (var key in localStorage) {
+	Object.keys(localStorage).forEach(key => {
 		if (key == "undefined" || key === undefined || key == "firstRun") {
-			continue;
+			return;
 		}
 		chrome.management.get(key, function (ext) {
 			var storedEntry = JSON.parse(localStorage.getItem(ext.id));
@@ -72,7 +72,7 @@ function setExt() {
 			localStorage.setItem(ext.id, JSON.stringify(storedEntry));
 			//console.log("Enabled?", ext.enabled, " Set to Enable?", storedEntry.bEnable, "Set to Activate (enable/disable)?", storedEntry.bActivated);
 		});
-	}
+	});
 }
 
 function doTabChange(tabId, changeInfo, tab) {
@@ -104,4 +104,3 @@ chrome.tabs.getCurrent(function(tab){
 	tab && checkForValidUrl(tab);
 });
 setExt();
-

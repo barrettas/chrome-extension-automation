@@ -42,7 +42,7 @@
         </table>
         <table id="prefs-table"></table>
         <p>
-            <button type="button" onclick="doClear()">Clear All</button>
+            <button type="button" id='clearBut'>Clear All</button>
         </p>
 
     </div>
@@ -57,10 +57,10 @@
 
     <div class="toggle">
         <p>Copy Settings for <b>Export</b>
-            <input onclick='selectAll("export")' id='export'></input></br>
+            <input id='export'></input></br>
             Paste Settings to <b>Import</b>
             <input id='import'></input>
-            <button onclick='setStored()'>Import</button>
+            <button id='importBut'>Import</button>
             <a id='flash' style='display:none; color:green'> Settings Saved</a>
     </div>
 </div>
@@ -95,8 +95,7 @@
             risk!) </p>
 
         <p>
-            <a href="chrome://settings/extensions" target="_blank"
-               onclick="chrome.tabs.create({url: 'chrome://settings/extensions'});">Manage Extensions</a>
+            <a href="chrome://settings/extensions" target="_blank" id='manageExtsLink'>Manage Extensions</a>
             | <a href="https://chrome.google.com/webstore/detail/ghopjgdkodchjclkkfdekhjfomdbakkb" target="_blank">Chrome
             Webstore</a>
         </p>
