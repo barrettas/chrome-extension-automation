@@ -1,248 +1,255 @@
-//Copyright © Russell Hoy 2012 All Right Reserved.
-//No parts of this document may be used in any published or commercial
-//materials without prior consent. I would happy to share this code, but I prefer being asked first.
+// Copyright © Russell Hoy 2012 All Right Reserved.
+// No parts of this document may be used in any published or commercial
+// materials without prior consent. I would happy to share this code, but I prefer being asked first.
 
-function init() {
-	getStored(); //fill export box
-	firstRun();
-	//bind accordians
-	//$(".toggle").slideUp(); //start up
-	$(".trigger").click(function(){
-		$(this).next(".toggle").slideToggle("medium");
-	});
-
-	var form = document.getElementById("prefs-form");
-	debugger;
-	chrome.management.getAll(load_extensions);
-	form.addEventListener("submit", function (event) {
-		var selectedExt = document.getElementById("dropdown_ext_list").value;
-		var filterWords = document.getElementById("txtEnter").value;
-		var bEnable = document.getElementById("bEnable").value;
-		addStore(selectedExt, filterWords, bEnable);
-	});
-	makeTable();
-
+function getStored() {
+  $('#export').val(JSON.stringify(localStorage));
 }
 
-function firstRun(){
-	//make sure old users don't have corrupt data from old localStorage.
-	var firstRun = (localStorage['firstRun'] == 'true');
-	if (!firstRun) {
-		localStorage.clear();
- 	 	localStorage['firstRun'] = 'true';
-	}
-}
-
-function popupInit(popupForm) {
-	chrome.tabs.getSelected(function (tab) {
-		var getUrl = tab.url;
-		var domainUrl = getUrl.split('/');
-		var setUrl = document.getElementById('currentUrl');
-		setUrl.outerHTML = '<input type = text id = "currentUrl" value =' + domainUrl[2] + '/>';
-	});
-
-	chrome.management.getAll(load_extensions);
-	popupForm.addEventListener("submit", function (event) {
-		var selectedExt = document.getElementById("dropdown_ext_list").value;
-		var filterWords = document.getElementById("currentUrl").value;
-		var bEnable = document.getElementById("bEnable").value;
-		addStore(selectedExt, filterWords, bEnable);
-		window.close();
-	});
+function firstRun() {
+  // make sure old users don't have corrupt data from old localStorage.
+  const isFirstRun = localStorage.firstRun === 'true';
+  if (!isFirstRun) {
+    localStorage.clear();
+    localStorage.firstRun = 'true';
+  }
 }
 
 function isExtensionType(ext) {
-	return ext.type === "extension";
+  return ext.type === 'extension';
 }
 
-function load_extensions(extensions) {
-	var x = document.getElementById("dropdown_ext_list");
-	var optionArray = [];
-	for (var i in extensions) {
-		if (isExtensionType(extensions[i]) && (extensions[i].name != 'Extension Automation')) {
-			optionArray[i] = [extensions[i].name, extensions[i].id];
-		}
-	}
-	optionArray.sort();
-	while (x.options.length > 0) {
-		x.options[0] = null;
-	}
-	for (var p in optionArray) {
-		var op = new Option(optionArray[p][0], optionArray[p][1]);
-		x.options[p] = op;
-	}
+function loadExtensions(extensions) {
+  const extdd = document.getElementById('dropdown_ext_list');
+  extensions
+    .filter(ext => isExtensionType(ext) && ext.name !== 'Extension Automation')
+    .map(({ name, id }) => new Option(name, id))
+    .sort((optA, optB) => (optA.label > optB.label ? 1 : -1))
+    .forEach(opt => extdd.options.add(opt));
 }
+
 function addStore(extId, filterText, bEnable) {
-	chrome.management.get(extId, function (ext) {
-		if (!isExtensionType(ext)){
-			return;
-		}
-		var storedEntry = JSON.parse(localStorage.getItem(ext.id));
-		var filterWords = [];
-		var enable = true;
-		if (storedEntry != null) {
-			for (i in storedEntry.filterWords) {
-				filterWords.push(storedEntry.filterWords[i]);
-			}
-		}
-		filterWords.push(filterText);
-		if (bEnable == "Enable") {
-			enable = true;
-		} else {
-			enable = false;
-		}
-		var entry = {
-			id: ext.id,
-			name: ext.name,
-			bEnable: enable,
-			bActivated: false,
-			filterWords: filterWords
-		}
-		localStorage.setItem(ext.id, JSON.stringify(entry));
-	});
+  chrome.management.get(extId, ext => {
+    if (!isExtensionType(ext)) {
+      return;
+    }
+    const storedEntry = JSON.parse(localStorage.getItem(ext.id));
+    const filterWords = [
+      ...((storedEntry || {}).filterWords || []),
+      filterText,
+    ];
+    let enable = true;
+    if (bEnable === 'Enable') {
+      enable = true;
+    } else {
+      enable = false;
+    }
+    const entry = {
+      id: ext.id,
+      name: ext.name,
+      bEnable: enable,
+      bActivated: false,
+      filterWords,
+    };
+    localStorage.setItem(ext.id, JSON.stringify(entry));
+  });
+}
+
+function setStored() {
+  const string = $('#import').val();
+  try {
+    const data = JSON.parse(string);
+    Object.entries(data).forEach(([key, val]) => {
+      localStorage[key] = val;
+    });
+    firstRun();
+    makeTable();
+
+    $('#flash').fadeIn('medium', () => {
+      $('#flash').fadeOut(2000);
+    });
+  } catch (err) {
+    alert(
+      `Sorry, there was a problem importing data. Most likely, the imported data has a formatting mistake. Details: ${err}`,
+    );
+  }
+}
+
+function selectAll(id) {
+  document.getElementById(id).focus();
+  document.getElementById(id).select();
+}
+
+function setupEvents() {
+  document
+    .querySelector('#export')
+    .addEventListener('focus', () => selectAll('export'));
+  document
+    .querySelector('#importBut')
+    .addEventListener('click', () => setStored());
+  document.querySelector('#clearBut').addEventListener('click', () => {
+    const prompt = confirm('Erase all saved settings?');
+    if (prompt === true) {
+      localStorage.clear();
+      firstRun();
+      makeTable();
+    }
+  });
+  document
+    .querySelector('#manageExtsLink')
+    .addEventListener('click', () =>
+      chrome.tabs.create({ url: 'chrome://settings/extensions' }),
+    );
 }
 
 function makeTable() {
+  const table = document.getElementById('prefs-table');
+  table.innerHTML = '';
+  if (localStorage.length > 1) {
+    table.innerHTML = '<tr><th>Extension</th> <th>Filter</th></tr>';
+  }
+  const $tbody = document.createElement('tbody');
+  Object.keys(localStorage).forEach(extId => {
+    if (extId === 'undefined' || extId === 'firstRun') {
+      return;
+    }
+    chrome.management.get(extId, ext => {
+      const entry = JSON.parse(localStorage.getItem(ext.id));
+      if (entry == null) {
+        return;
+      }
+      const $tr = document.createElement('tr');
+      $tr.setAttribute('id', entry.bEnable);
+      let $td = document.createElement('td');
+      const extensionName = document.createElement('a');
+      document.createTextNode(entry.name);
 
-	var table = document.getElementById("prefs-table");
-	table.innerHTML = "";
-	if (localStorage.length > 1){
-		table.innerHTML = '<tr><th>Extension</th> <th>Filter</th></tr>';
-	}
-	var $tbody = document.createElement("tbody");
-	Object.keys(localStorage).forEach(extId => {
-		if (extId == "undefined" || extId == "firstRun") {return;}
-		chrome.management.get(extId, function (ext) {
-			var entry = JSON.parse(localStorage.getItem(ext.id));
-			if (entry == null){return;}
-			var $tr = document.createElement("tr");
-			$tr.setAttribute('id', entry.bEnable);
-			var $td = document.createElement("td");
-			var extensionName = document.createElement('a');
-			document.createTextNode(entry.name);
+      // add icons if possible
+      try {
+        if (ext.icons[1]) {
+          extensionName.innerHTML = `<img src=${
+            ext.icons[1].url
+          } width = 30 height = 30 />  `;
+        } else if (ext.icons[0]) {
+          extensionName.innerHTML = `<img src=${
+            ext.icons[0].url
+          } width = 30 height = 30 />  `;
+        } else if (ext.icons[2]) {
+          extensionName.innerHTML = `<img src=${
+            ext.icons[2].url
+          } width = 30 height = 30 />  `;
+        } else {
+          extensionName.innerHTML =
+            "<img src='blank.png'; width = 30; height = 30 />  ";
+        }
+      } catch (err) {
+        extensionName.innerHTML =
+          "<img src='blank.png'; width = 30; height = 30 />  ";
+      }
+      // add disable sign
+      extensionName.innerHTML += "<img src= 'nosign1.png'; class = 'nosign'/>";
+      extensionName.innerHTML += ext.name;
+      $td.appendChild(extensionName);
+      $td.setAttribute('class', entry.id);
+      $td.addEventListener(
+        'click',
+        ({ currentTarget: { className: entryId } }) => {
+          const storedEntry = JSON.parse(window.localStorage.getItem(entryId));
+          if (storedEntry.bEnable === false) {
+            // if disabled, enable
+            storedEntry.bEnable = true;
+            window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
+          } else {
+            storedEntry.bEnable = false;
+            window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
+          }
+          makeTable();
+        },
+      );
+      $tr.appendChild($td);
+      $td = document.createElement('td');
 
-			//add icons if possible
-			try {
-				if (ext.icons[1]) {
-					extensionName.innerHTML = "<img src=" + ext.icons[1].url + " width = 30 height = 30 />  "
-				}
-				else if(ext.icons[0]) {
-					extensionName.innerHTML = "<img src=" + ext.icons[0].url + " width = 30 height = 30 />  "
-				}
-				else if(ext.icons[2]) {
-					extensionName.innerHTML = "<img src=" + ext.icons[2].url + " width = 30 height = 30 />  "
-				}
-				else {
-					extensionName.innerHTML = "<img src='blank.png'; width = 30; height = 30 />  "
-				}
-			}
-			catch(err){
-				extensionName.innerHTML = "<img src='blank.png'; width = 30; height = 30 />  "
-			}
-			//add disable sign
-			extensionName.innerHTML += "<img src= 'nosign1.png'; class = 'nosign'/>"
-			extensionName.innerHTML += ext.name;
-			$td.appendChild(extensionName);
-			$td.setAttribute('class', entry.id);
-			$td.setAttribute('onclick', 'switchMode(this.className)')
-			$tr.appendChild($td);
-			$td = document.createElement("td");
-
-			for (i in entry.filterWords) {
-				var enable_words = document.createElement('span');
-				enable_words.innerHTML = entry.filterWords[i] + "," + "<br>";
-				enable_words.setAttribute('class', entry.id);
-				enable_words.setAttribute('id', i);
-				// enable_words.setAttribute('onclick', 'removeItem(this.className, this.id)');
-				enable_words.addEventListener('click', (evt) => {
-					removeItem(evt.target.className, evt.target.id);
-				});
-				$td.appendChild(enable_words);
-			}
-			$tr.appendChild($td);
-			$tbody.appendChild($tr)
-			table.appendChild($tbody)
-		});
-	});
-	getStored();
-	setupEvents();
+      entry.filterWords.forEach((filterWord, idx) => {
+        const enableWords = document.createElement('span');
+        enableWords.innerHTML = `${filterWord},<br>`;
+        enableWords.setAttribute('class', entry.id);
+        enableWords.setAttribute('id', idx);
+        enableWords.addEventListener(
+          'click',
+          ({ target: { className: entryId, id: word } }) => {
+            const storedEntry = JSON.parse(localStorage.getItem(entryId));
+            storedEntry.filterWords.splice(word, 1);
+            if (storedEntry.filterWords.length === 0) {
+              // if no filter words left, delete entry
+              localStorage.removeItem(entryId);
+            } else {
+              localStorage.setItem(entryId, JSON.stringify(storedEntry));
+            }
+            makeTable();
+          },
+        );
+        $td.appendChild(enableWords);
+      });
+      $tr.appendChild($td);
+      $tbody.appendChild($tr);
+      table.appendChild($tbody);
+    });
+  });
+  getStored();
+  setupEvents();
 }
 
-function getStored(){
-	$('#export').val(JSON.stringify(localStorage));
+function init() {
+  getStored(); // fill export box
+  firstRun();
+  // bind accordians
+  // $(".toggle").slideUp(); //start up
+  $('.trigger').click(function() {
+    $(this)
+      .next('.toggle')
+      .slideToggle('medium');
+  });
+
+  const form = document.getElementById('prefs-form');
+
+  chrome.management.getAll(loadExtensions);
+  form.addEventListener('submit', (/* event */) => {
+    const selectedExt = document.getElementById('dropdown_ext_list').value;
+    const filterWords = document.getElementById('txtEnter').value;
+    const bEnable = document.getElementById('bEnable').value;
+    addStore(selectedExt, filterWords, bEnable);
+  });
+  makeTable();
 }
 
-function setupEvents(){
-	document.querySelector("#export").addEventListener('focus', () => selectAll("export"));
-	document.querySelector("#importBut").addEventListener('click', () => setStored());
-	document.querySelector("#clearBut").addEventListener('click', () => doClear());
-	document.querySelector("#manageExtsLink").addEventListener('click', () => chrome.tabs.create({url: "chrome://settings/extensions"}));
+function popupInit(popupForm) {
+  chrome.tabs.getSelected(tab => {
+    const getUrl = tab.url;
+    const domainUrl = getUrl.split('/');
+    const setUrl = document.getElementById('currentUrl');
+    setUrl.outerHTML = `<input type = text id = "currentUrl" value =${
+      domainUrl[2]
+    }/>`;
+  });
+
+  chrome.management.getAll(loadExtensions);
+  popupForm.addEventListener('submit', (/* event */) => {
+    const selectedExt = document.getElementById('dropdown_ext_list').value;
+    const filterWords = document.getElementById('currentUrl').value;
+    const bEnable = document.getElementById('bEnable').value;
+    addStore(selectedExt, filterWords, bEnable);
+    window.close();
+  });
 }
 
-function setStored(){
-	var string = $('#import').val();
-	try {
-		var data = JSON.parse(string);
-		for (var key in data) {
-			localStorage[key] = data[key];
-		}
-		firstRun();
-		makeTable();
-
-		$('#flash').fadeIn('medium', function() {
-	        		$('#flash').fadeOut(2000);
-	      	});
-	}
-	catch(err){
-		alert("Sorry, there was a problem importing data. Most likely, the imported data has a formatting mistake. Details: " + err);
-	}
-}
-
-function selectAll(id){
-	document.getElementById(id).focus();
-    	document.getElementById(id).select();
-}
-
-function removeItem(entryId, word) {
-	var storedEntry = JSON.parse(localStorage.getItem(entryId));
-	storedEntry.filterWords.splice(word, 1);
-	if (storedEntry.filterWords.length == 0) { //if no filter words left, delete entry
-		localStorage.removeItem(entryId);
-	} else {
-		localStorage.setItem(entryId, JSON.stringify(storedEntry));
-	}
-	makeTable();
-}
-
-function switchMode(entryId) {
-	var storedEntry = JSON.parse(window.localStorage.getItem(entryId))
-	if (storedEntry.bEnable == false) { //if disabled, enable
-		storedEntry.bEnable = true;
-		window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
-	} else {
-		storedEntry.bEnable = false;
-		window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
-	}
-	makeTable();
-}
-
-function doClear() {
-	var r=confirm("Erase all saved settings?");
-	if (r==true)
-	  {
-	  	localStorage.clear();
-	  	firstRun();
-		makeTable();
-	  }
-}
-
-var optsLink = document.querySelector("#goto1");
-optsLink && (optsLink.onclick = function openOptions() {
-  window.open('options.html');
-});
-
-(function(){
-  var popupForm = document.querySelector("#popup-form");
-  popupForm && popupInit(popupForm);
-  popupForm == null && init();
+(function() {
+  const optsLink = document.querySelector('#goto1');
+  if (optsLink) {
+    optsLink.onclick = function openOptions() {
+      window.open('options.html');
+    };
+  }
+  const popupForm = document.querySelector('#popup-form');
+  if (popupForm) popupInit(popupForm);
+  if (popupForm == null) init();
 })();
