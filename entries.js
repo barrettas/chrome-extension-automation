@@ -113,87 +113,95 @@ function makeTable() {
     if (extId === 'undefined' || extId === 'firstRun') {
       return;
     }
-    chrome.management.get(extId, ext => {
-      const entry = JSON.parse(localStorage.getItem(ext.id));
-      if (entry == null) {
-        return;
-      }
-      const $tr = document.createElement('tr');
-      $tr.setAttribute('id', entry.bEnable);
-      let $td = document.createElement('td');
-      const extensionName = document.createElement('a');
-      document.createTextNode(entry.name);
+    try {
+      chrome.management.get(extId, ext => {
+        if (typeof ext === 'undefined'){
+          console.log('Continuing past unfound extension ' + JSON.parse(localStorage.getItem(extId)).name + '(' + extId + ')');
+          return;
+        }
+        const entry = JSON.parse(localStorage.getItem(ext.id));
+        if (entry == null) {
+          return;
+        }
+        const $tr = document.createElement('tr');
+        $tr.setAttribute('id', entry.bEnable);
+        let $td = document.createElement('td');
+        const extensionName = document.createElement('a');
+        document.createTextNode(entry.name);
 
-      // add icons if possible
-      try {
-        if (ext.icons[1]) {
-          extensionName.innerHTML = `<img src=${
-            ext.icons[1].url
-          } width = 30 height = 30 />  `;
-        } else if (ext.icons[0]) {
-          extensionName.innerHTML = `<img src=${
-            ext.icons[0].url
-          } width = 30 height = 30 />  `;
-        } else if (ext.icons[2]) {
-          extensionName.innerHTML = `<img src=${
-            ext.icons[2].url
-          } width = 30 height = 30 />  `;
-        } else {
+        // add icons if possible
+        try {
+          if (ext.icons[1]) {
+            extensionName.innerHTML = `<img src=${
+              ext.icons[1].url
+            } width = 30 height = 30 />  `;
+          } else if (ext.icons[0]) {
+            extensionName.innerHTML = `<img src=${
+              ext.icons[0].url
+            } width = 30 height = 30 />  `;
+          } else if (ext.icons[2]) {
+            extensionName.innerHTML = `<img src=${
+              ext.icons[2].url
+            } width = 30 height = 30 />  `;
+          } else {
+            extensionName.innerHTML =
+              "<img src='blank.png'; width = 30; height = 30 />  ";
+          }
+        } catch (err) {
           extensionName.innerHTML =
             "<img src='blank.png'; width = 30; height = 30 />  ";
         }
-      } catch (err) {
-        extensionName.innerHTML =
-          "<img src='blank.png'; width = 30; height = 30 />  ";
-      }
-      // add disable sign
-      extensionName.innerHTML += "<img src= 'nosign1.png'; class = 'nosign'/>";
-      extensionName.innerHTML += ext.name;
-      $td.appendChild(extensionName);
-      $td.setAttribute('class', entry.id);
-      $td.addEventListener(
-        'click',
-        ({ currentTarget: { className: entryId } }) => {
-          const storedEntry = JSON.parse(window.localStorage.getItem(entryId));
-          if (storedEntry.bEnable === false) {
-            // if disabled, enable
-            storedEntry.bEnable = true;
-            window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
-          } else {
-            storedEntry.bEnable = false;
-            window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
-          }
-          makeTable();
-        },
-      );
-      $tr.appendChild($td);
-      $td = document.createElement('td');
-
-      entry.filterWords.forEach((filterWord, idx) => {
-        const enableWords = document.createElement('span');
-        enableWords.innerHTML = `${filterWord},<br>`;
-        enableWords.setAttribute('class', entry.id);
-        enableWords.setAttribute('id', idx);
-        enableWords.addEventListener(
+        // add disable sign
+        extensionName.innerHTML += "<img src= 'nosign1.png'; class = 'nosign'/>";
+        extensionName.innerHTML += ext.name;
+        $td.appendChild(extensionName);
+        $td.setAttribute('class', entry.id);
+        $td.addEventListener(
           'click',
-          ({ target: { className: entryId, id: word } }) => {
-            const storedEntry = JSON.parse(localStorage.getItem(entryId));
-            storedEntry.filterWords.splice(word, 1);
-            if (storedEntry.filterWords.length === 0) {
-              // if no filter words left, delete entry
-              localStorage.removeItem(entryId);
+          ({ currentTarget: { className: entryId } }) => {
+            const storedEntry = JSON.parse(window.localStorage.getItem(entryId));
+            if (storedEntry.bEnable === false) {
+              // if disabled, enable
+              storedEntry.bEnable = true;
+              window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
             } else {
-              localStorage.setItem(entryId, JSON.stringify(storedEntry));
+              storedEntry.bEnable = false;
+              window.localStorage.setItem(entryId, JSON.stringify(storedEntry));
             }
             makeTable();
           },
         );
-        $td.appendChild(enableWords);
+        $tr.appendChild($td);
+        $td = document.createElement('td');
+
+        entry.filterWords.forEach((filterWord, idx) => {
+          const enableWords = document.createElement('span');
+          enableWords.innerHTML = `${filterWord},<br>`;
+          enableWords.setAttribute('class', entry.id);
+          enableWords.setAttribute('id', idx);
+          enableWords.addEventListener(
+            'click',
+            ({ target: { className: entryId, id: itemIdx } }) => {
+              const storedEntry = JSON.parse(localStorage.getItem(entryId));
+              console.log('Removing filter ' + storedEntry.filterWords.splice(itemIdx, 1) + ' for extension ' + storedEntry.name);
+              if (storedEntry.filterWords.length === 0) {
+                // if no filter words left, delete entry
+                localStorage.removeItem(entryId);
+              } else {
+                localStorage.setItem(entryId, JSON.stringify(storedEntry));
+              }
+              makeTable();
+            },
+          );
+          $td.appendChild(enableWords);
+        });
+        $tr.appendChild($td);
+        $tbody.appendChild($tr);
+        table.appendChild($tbody);
       });
-      $tr.appendChild($td);
-      $tbody.appendChild($tr);
-      table.appendChild($tbody);
-    });
+    } catch(e) {
+      console.error('Problem finding extension:', e);
+    }
   });
   getStored();
   setupEvents();
